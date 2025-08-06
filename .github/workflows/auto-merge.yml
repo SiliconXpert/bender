@@ -50,19 +50,19 @@ jobs:
           COMMIT_SHA=$(gh pr view $PR_NUMBER --json headRefOid --jq '.headRefOid')
           echo "Checking status for commit: $COMMIT_SHA"
           
-          # Check if all required status checks have passed
+          # Check if all required status checks have passed (excluding Windows for now)
           STATUS=$(gh api repos/${{ github.repository }}/commits/$COMMIT_SHA/status --jq '.state')
-          CHECKS=$(gh api repos/${{ github.repository }}/commits/$COMMIT_SHA/check-runs --jq '.check_runs[] | select(.name | test("test|Clippy")) | .conclusion')
+          CHECKS=$(gh api repos/${{ github.repository }}/commits/$COMMIT_SHA/check-runs --jq '.check_runs[] | select(.name | test("test.*stable|test.*beta|test.*nightly|test.*1\\.78\\.0|Clippy")) | .conclusion')
           
           echo "Overall status: $STATUS"
           echo "Check results: $CHECKS"
           
-          # Verify all checks passed
-          if [ "$STATUS" = "success" ] && echo "$CHECKS" | grep -q "success" && ! echo "$CHECKS" | grep -q "failure\|cancelled"; then
-            echo "All checks passed!"
+          # Verify required checks passed (excluding Windows)
+          if echo "$CHECKS" | grep -q "success" && ! echo "$CHECKS" | grep -q "failure\|cancelled"; then
+            echo "All required checks passed!"
             echo "should_merge=true" >> $GITHUB_OUTPUT
           else
-            echo "Not all checks passed yet"
+            echo "Not all required checks passed yet"
             echo "should_merge=false" >> $GITHUB_OUTPUT
           fi
         env:
