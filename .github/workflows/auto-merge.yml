@@ -1,0 +1,101 @@
+name: Auto-merge PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    branches: [ master ]
+  workflow_run:
+    workflows: ["ci"]
+    types: [completed]
+    branches: [ master ]
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.pull_request.draft == false &&
+      (contains(github.event.pull_request.labels.*.name, 'auto-merge') || 
+       github.event.workflow_run.conclusion == 'success')
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Get PR information
+        id: pr-info
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # Get PR number from workflow run
+            PR_NUMBER=$(gh pr list --head ${{ github.event.workflow_run.head_branch }} --json number --jq '.[0].number')
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          else
+            echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if all required checks passed
+        id: check-status
+        run: |
+          PR_NUMBER=${{ steps.pr-info.outputs.pr_number }}
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No PR found, skipping merge"
+            echo "should_merge=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Get the latest commit SHA for the PR
+          COMMIT_SHA=$(gh pr view $PR_NUMBER --json headRefOid --jq '.headRefOid')
+          echo "Checking status for commit: $COMMIT_SHA"
+          
+          # Check if all required status checks have passed
+          STATUS=$(gh api repos/${{ github.repository }}/commits/$COMMIT_SHA/status --jq '.state')
+          CHECKS=$(gh api repos/${{ github.repository }}/commits/$COMMIT_SHA/check-runs --jq '.check_runs[] | select(.name | test("test|Clippy")) | .conclusion')
+          
+          echo "Overall status: $STATUS"
+          echo "Check results: $CHECKS"
+          
+          # Verify all checks passed
+          if [ "$STATUS" = "success" ] && echo "$CHECKS" | grep -q "success" && ! echo "$CHECKS" | grep -q "failure\|cancelled"; then
+            echo "All checks passed!"
+            echo "should_merge=true" >> $GITHUB_OUTPUT
+          else
+            echo "Not all checks passed yet"
+            echo "should_merge=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-merge PR
+        if: steps.check-status.outputs.should_merge == 'true'
+        run: |
+          PR_NUMBER=${{ steps.pr-info.outputs.pr_number }}
+          
+          # Check if PR has auto-merge label or is triggered by successful CI
+          HAS_LABEL=$(gh pr view $PR_NUMBER --json labels --jq '.labels[] | select(.name == "auto-merge") | .name')
+          NO_MERGE_LABEL=$(gh pr view $PR_NUMBER --json labels --jq '.labels[] | select(.name == "no-merge") | .name')
+          
+          if [ -n "$NO_MERGE_LABEL" ]; then
+            echo "PR has 'no-merge' label, skipping auto-merge"
+            exit 0
+          fi
+          
+          if [ -n "$HAS_LABEL" ] || [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "Auto-merging PR #$PR_NUMBER"
+            gh pr merge $PR_NUMBER --squash --auto --delete-branch
+            echo "PR #$PR_NUMBER has been set to auto-merge"
+          else
+            echo "PR does not have 'auto-merge' label, skipping"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add comment on successful merge
+        if: steps.check-status.outputs.should_merge == 'true'
+        run: |
+          PR_NUMBER=${{ steps.pr-info.outputs.pr_number }}
+          gh pr comment $PR_NUMBER --body "🎉 All tests passed! This PR has been automatically merged."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
