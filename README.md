@@ -2,6 +2,8 @@
 
 Bender is a dependency management tool for hardware design projects. It provides a way to define dependencies among IPs, execute unit tests, and verify that the source files are valid input for various simulation and synthesis tools.
 
+<!-- Auto-merge test comment -->
+
 ![Build Status](https://github.com/pulp-platform/bender/actions/workflows/ci.yml/badge.svg)
 [![Crates.io](https://img.shields.io/crates/v/bender.svg)](https://crates.io/crates/bender)
 [![dependency status](https://deps.rs/repo/github/pulp-platform/bender/status.svg)](https://deps.rs/repo/github/pulp-platform/bender)
