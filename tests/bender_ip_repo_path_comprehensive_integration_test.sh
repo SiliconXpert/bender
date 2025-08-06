@@ -4,6 +4,9 @@
 
 set -e
 
+cd "$(dirname "${BASH_SOURCE[0]}")"
+BENDER="$(cd .. && pwd)/target/debug/bender"
+
 # Create a temporary directory for testing
 TEST_DIR=$(mktemp -d)
 cd "$TEST_DIR"
@@ -82,7 +85,7 @@ export BENDER_IP_REPO_PATH="$TEST_DIR/company_ips"
 cd project/cpu_design
 
 # Verify that IPs are resolved from local repository
-OUTPUT=$(/workspaces/bender/target/debug/bender packages 2>&1)
+OUTPUT=$($BENDER packages 2>&1)
 
 if ! echo "$OUTPUT" | grep -q "axi_lib"; then
     echo "Error: axi_lib should be found"
@@ -95,13 +98,13 @@ if ! echo "$OUTPUT" | grep -q "uart_ip"; then
 fi
 
 # Verify sources command works
-/workspaces/bender/target/debug/bender sources > /dev/null
+$BENDER sources > /dev/null
 echo "✓ Local IP repository resolution works"
 
 echo "=== Test 2: Script generation ==="
 
 # Test script generation
-/workspaces/bender/target/debug/bender script flist > flist_output.txt
+$BENDER script flist > flist_output.txt
 if [ ! -s flist_output.txt ]; then
     echo "Error: Script generation failed"
     exit 1
@@ -156,7 +159,7 @@ echo 'module consumer; endmodule' > "$TEST_DIR/priority_test/consumer/src/consum
 export BENDER_IP_REPO_PATH="$TEST_DIR/priority_test/path1:$TEST_DIR/priority_test/path2"
 cd "$TEST_DIR/priority_test/consumer"
 
-SOURCES_OUTPUT=$(/workspaces/bender/target/debug/bender sources --flatten 2>&1)
+SOURCES_OUTPUT=$($BENDER sources --flatten 2>&1)
 if ! echo "$SOURCES_OUTPUT" | grep -q "priority1.sv"; then
     echo "Error: Should use first path in search order"
     exit 1

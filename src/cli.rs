@@ -127,10 +127,10 @@ pub fn main() -> Result<()> {
         &root_dir,
         matches!(matches.subcommand(), Some(("update", _))),
     )?;
-    
+
     // Add search path overrides for dependencies found in BENDER_IP_REPO_PATH
     add_search_path_overrides(&mut config, &manifest)?;
-    
+
     debugln!("main: {:#?}", config);
 
     // Assemble the session.
@@ -361,7 +361,7 @@ pub fn read_manifest(path: &Path) -> Result<Manifest> {
 /// Add search path overrides for dependencies found in BENDER_IP_REPO_PATH.
 fn add_search_path_overrides(config: &mut Config, manifest: &Manifest) -> Result<()> {
     use crate::util::search_ip_in_repo_paths;
-    
+
     // Check each dependency in the manifest
     for (dep_name, dep_config) in &manifest.dependencies {
         // Only process non-path dependencies
@@ -376,15 +376,14 @@ fn add_search_path_overrides(config: &mut Config, manifest: &Manifest) -> Result
                         ip_path
                     );
                     // Add to overrides
-                    config.overrides.insert(
-                        dep_name.clone(),
-                        Dependency::Path(ip_path),
-                    );
+                    config
+                        .overrides
+                        .insert(dep_name.clone(), Dependency::Path(ip_path));
                 }
             }
         }
     }
-    
+
     Ok(())
 }
 

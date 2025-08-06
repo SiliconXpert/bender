@@ -4,6 +4,9 @@
 
 set -e
 
+cd "$(dirname "${BASH_SOURCE[0]}")"
+BENDER="$(cd .. && pwd)/target/debug/bender"
+
 # Create a temporary directory for testing
 TEST_DIR=$(mktemp -d)
 cd "$TEST_DIR"
@@ -40,9 +43,9 @@ EOF
 cd test_pkg
 
 # Test basic commands work
-/workspaces/bender/target/debug/bender packages > /dev/null
-/workspaces/bender/target/debug/bender sources > /dev/null
-/workspaces/bender/target/debug/bender config > /dev/null
+$BENDER packages > /dev/null
+$BENDER sources > /dev/null
+$BENDER config > /dev/null
 
 cd ..
 
@@ -50,16 +53,16 @@ cd ..
 export BENDER_IP_REPO_PATH=""
 
 cd test_pkg
-/workspaces/bender/target/debug/bender packages > /dev/null
-/workspaces/bender/target/debug/bender sources > /dev/null
+$BENDER packages > /dev/null
+$BENDER sources > /dev/null
 cd ..
 
 # Test 3: Functionality with non-existent paths in BENDER_IP_REPO_PATH
 export BENDER_IP_REPO_PATH="/non/existent/path1:/another/fake/path"
 
 cd test_pkg
-/workspaces/bender/target/debug/bender packages > /dev/null
-/workspaces/bender/target/debug/bender sources > /dev/null
+$BENDER packages > /dev/null
+$BENDER sources > /dev/null
 cd ..
 
 # Test 4: Path dependencies still work normally
@@ -99,8 +102,8 @@ endmodule
 EOF
 
 cd path_dep_test/main_pkg
-/workspaces/bender/target/debug/bender packages > /dev/null
-/workspaces/bender/target/debug/bender sources > /dev/null
+$BENDER packages > /dev/null
+$BENDER sources > /dev/null
 cd ../..
 
 echo "All backward compatibility tests passed"

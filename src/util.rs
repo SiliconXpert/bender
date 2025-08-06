@@ -229,7 +229,7 @@ pub fn search_ip_in_repo_paths(ip_name: &str) -> Option<std::path::PathBuf> {
         }
 
         let base_path = PathBuf::from(path_str);
-        
+
         // Try direct path (e.g., /path/to/ip_name/Bender.yml)
         let direct_path = base_path.join(ip_name).join("Bender.yml");
         if direct_path.exists() {

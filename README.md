@@ -580,4 +580,3 @@ Supported shells:
 [aur-bender]: https://aur.archlinux.org/packages/bender
 [releases]: https://github.com/pulp-platform/bender/releases
 [rust-installation]: https://doc.rust-lang.org/book/ch01-01-installation.html
-# Testing auto-merge workflow

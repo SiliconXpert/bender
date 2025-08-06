@@ -4,6 +4,15 @@
 
 set -e
 
+#!/bin/bash
+# Test: BENDER_IP_REPO_PATH core functionality
+# Tests the main search path override functionality
+
+set -e
+
+cd "$(dirname "${BASH_SOURCE[0]}")"
+BENDER="$(cd .. && pwd)/target/debug/bender"
+
 # Create a temporary directory for testing
 TEST_DIR=$(mktemp -d)
 cd "$TEST_DIR"
@@ -59,7 +68,7 @@ export BENDER_IP_REPO_PATH="$TEST_DIR/repo_test/repo_path"
 cd repo_test/main_pkg
 
 # Verify the search path override works
-OUTPUT=$(/workspaces/bender/target/debug/bender packages 2>&1)
+OUTPUT=$($BENDER packages 2>&1)
 if ! echo "$OUTPUT" | grep -q "test_ip"; then
     echo "Error: test_ip not found in packages output"
     exit 1
@@ -71,7 +80,7 @@ if ! echo "$OUTPUT" | grep -q "path"; then
 fi
 
 # Verify sources command works
-/workspaces/bender/target/debug/bender sources > /dev/null
+$BENDER sources > /dev/null
 
 cd ../..
 
@@ -119,14 +128,14 @@ export BENDER_IP_REPO_PATH="$TEST_DIR/direct_test"
 cd direct_test/main_pkg
 
 # Verify the direct layout search works
-OUTPUT=$(/workspaces/bender/target/debug/bender packages 2>&1)
+OUTPUT=$($BENDER packages 2>&1)
 if ! echo "$OUTPUT" | grep -q "direct_ip"; then
     echo "Error: direct_ip not found in packages output"
     exit 1
 fi
 
 # Verify sources command works
-/workspaces/bender/target/debug/bender sources > /dev/null
+$BENDER sources > /dev/null
 
 cd ../..
 
@@ -187,7 +196,7 @@ export BENDER_IP_REPO_PATH="$TEST_DIR/multi_test/path1:$TEST_DIR/multi_test/path
 cd multi_test/main
 
 # Verify both IPs are found
-OUTPUT=$(/workspaces/bender/target/debug/bender packages 2>&1)
+OUTPUT=$($BENDER packages 2>&1)
 if ! echo "$OUTPUT" | grep -q "ip1"; then
     echo "Error: ip1 not found in multi-path test"
     exit 1
@@ -199,7 +208,7 @@ if ! echo "$OUTPUT" | grep -q "ip2"; then
 fi
 
 # Verify sources command works
-/workspaces/bender/target/debug/bender sources > /dev/null
+$BENDER sources > /dev/null
 
 cd ../..
 

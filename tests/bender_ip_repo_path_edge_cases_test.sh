@@ -4,6 +4,9 @@
 
 set -e
 
+cd "$(dirname "${BASH_SOURCE[0]}")"
+BENDER="$(cd .. && pwd)/target/debug/bender"
+
 # Create a temporary directory for testing
 TEST_DIR=$(mktemp -d)
 cd "$TEST_DIR"
@@ -34,7 +37,7 @@ EOF
 
 cd edge_test1
 # Should handle malformed path gracefully
-/workspaces/bender/target/debug/bender packages > /dev/null
+$BENDER packages > /dev/null
 cd ..
 
 # Test 2: Conflicting dependency names (same name in multiple search paths)
@@ -90,7 +93,7 @@ export BENDER_IP_REPO_PATH="$TEST_DIR/conflict_test/path1:$TEST_DIR/conflict_tes
 
 cd conflict_test/main
 # Should use the first one found and not fail
-OUTPUT=$(/workspaces/bender/target/debug/bender packages 2>&1)
+OUTPUT=$($BENDER packages 2>&1)
 if ! echo "$OUTPUT" | grep -q "shared_dep"; then
     echo "Error: shared_dep not found in conflicting dependencies test"
     exit 1
@@ -123,7 +126,7 @@ export BENDER_IP_REPO_PATH="$TEST_DIR/conflict_test/path1"  # Path doesn't conta
 cd fallback_test/main_pkg
 
 # This should attempt Git and fail (expected behavior)
-if /workspaces/bender/target/debug/bender packages > /dev/null 2>&1; then
+if $BENDER packages > /dev/null 2>&1; then
     echo "Error: Should have failed trying to fetch from fake Git URL"
     exit 1
 fi
@@ -149,7 +152,7 @@ EOF
 
 cd special_test
 # Should handle special characters gracefully
-/workspaces/bender/target/debug/bender packages > /dev/null
+$BENDER packages > /dev/null
 cd ..
 
 # Test 5: Very long path string
@@ -175,7 +178,7 @@ EOF
 
 cd long_path_test
 # Should handle long path string gracefully
-/workspaces/bender/target/debug/bender packages > /dev/null
+$BENDER packages > /dev/null
 cd ..
 
 echo "All edge case tests passed"
