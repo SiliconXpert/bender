@@ -70,9 +70,16 @@ jobs:
     if: always()
     steps:
       - name: Check required jobs
+        shell: bash
         run: |
-          if [ "${{ needs.test.result }}" != "success" ] || [ "${{ needs.clippy_check.result }}" != "success" ]; then
-            echo "Required Linux tests failed"
+          echo "Test result: ${{ needs.test.result }}"
+          echo "Clippy result: ${{ needs.clippy_check.result }}"
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Linux tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.clippy_check.result }}" != "success" ]; then
+            echo "Clippy check failed"
             exit 1
           fi
           echo "All required tests passed"
