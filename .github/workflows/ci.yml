@@ -71,7 +71,7 @@ jobs:
     steps:
       - name: Check required jobs
         run: |
-          if [[ "${{ needs.test.result }}" != "success" || "${{ needs.clippy_check.result }}" != "success" ]]; then
+          if [ "${{ needs.test.result }}" != "success" ] || [ "${{ needs.clippy_check.result }}" != "success" ]; then
             echo "Required Linux tests failed"
             exit 1
           fi
