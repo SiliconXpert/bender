@@ -148,6 +148,8 @@ pub struct Sources {
     pub include_dirs: Vec<PathBuf>,
     /// The preprocessor definitions.
     pub defines: IndexMap<String, Option<String>>,
+    /// The library entries.
+    pub libraries: Vec<Library>,
     /// The source files.
     pub files: Vec<SourceFile>,
 }
@@ -158,7 +160,35 @@ impl PrefixPaths for Sources {
             target: self.target,
             include_dirs: self.include_dirs.prefix_paths(prefix)?,
             defines: self.defines,
+            libraries: self.libraries.prefix_paths(prefix)?,
             files: self.files.prefix_paths(prefix)?,
+        })
+    }
+}
+
+/// A library entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Library {
+    /// A library path (for -y option in VCS, search_path in synthesis tools).
+    Path(PathBuf),
+    /// A library file (for -v option in VCS, RTL file for synthesis tools).
+    File {
+        /// The path to the library file.
+        path: PathBuf,
+        /// The language of the library file (e.g., "verilog", "systemverilog", "vhdl").
+        /// If None, the language will be inferred from the file extension.
+        language: Option<String>,
+    },
+}
+
+impl PrefixPaths for Library {
+    fn prefix_paths(self, prefix: &Path) -> Result<Self> {
+        Ok(match self {
+            Library::Path(path) => Library::Path(path.prefix_paths(prefix)?),
+            Library::File { path, language } => Library::File {
+                path: path.prefix_paths(prefix)?,
+                language,
+            },
         })
     }
 }
@@ -471,6 +501,92 @@ impl Validate for PartialDependency {
     }
 }
 
+/// A partial library entry for deserialization.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum PartialLibrary {
+    /// A library specified as a string (defaults to path).
+    String(String),
+    /// A library specified with type.
+    Typed {
+        /// The path to the library.
+        path: String,
+        /// The type of library (path or file).
+        #[serde(rename = "type")]
+        lib_type: String,
+        /// The language of the library file (optional).
+        language: Option<String>,
+    },
+}
+
+impl PartialLibrary {
+    /// Infer language from file extension.
+    fn infer_language_from_extension(path: &Path) -> Option<String> {
+        if let Some(extension) = path.extension().and_then(|ext| ext.to_str()) {
+            match extension.to_lowercase().as_str() {
+                // SystemVerilog extensions
+                "sv" | "svh" | "gsv" => Some("systemverilog".to_string()),
+                // Verilog extensions (can be either verilog or systemverilog)
+                "v" | "vh" | "gv" => Some("verilog".to_string()),
+                // VHDL extensions
+                "vhd" | "vhdl" => Some("vhdl".to_string()),
+                // Other HDL extensions - default to verilog
+                "vp" | "vams" | "va" => Some("verilog".to_string()),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Validate and convert to Library.
+    pub fn validate(self) -> Result<Library> {
+        match self {
+            PartialLibrary::String(path) => {
+                let expanded_path = env_path_from_string(path)?;
+                
+                // Auto-detect library type based on file extension
+                if let Some(extension) = expanded_path.extension().and_then(|ext| ext.to_str()) {
+                    match extension.to_lowercase().as_str() {
+                        // Common hardware description language file extensions
+                        "v" | "vh" | "sv" | "svh" | "vhd" | "vhdl" | 
+                        "vp" | "vams" | "va" | "lib" | "gv" | "gsv" => {
+                            let language = Self::infer_language_from_extension(&expanded_path);
+                            Ok(Library::File {
+                                path: expanded_path,
+                                language,
+                            })
+                        }
+                        _ => Ok(Library::Path(expanded_path))
+                    }
+                } else {
+                    // No extension, assume it's a directory path
+                    Ok(Library::Path(expanded_path))
+                }
+            }
+            PartialLibrary::Typed { path, lib_type, language } => {
+                let expanded_path = env_path_from_string(path)?;
+                match lib_type.as_str() {
+                    "path" => Ok(Library::Path(expanded_path)),
+                    "file" => {
+                        let final_language = language.or_else(|| {
+                            Self::infer_language_from_extension(&expanded_path)
+                        });
+                        Ok(Library::File {
+                            path: expanded_path,
+                            language: final_language,
+                        })
+                    }
+                    _ => Err(Error::new(format!(
+                        "Invalid library type '{}'. Must be 'path' or 'file'",
+                        lib_type
+                    ))),
+                }
+            }
+        }
+    }
+}
+
 /// A partial group of source files.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PartialSources {
@@ -480,6 +596,8 @@ pub struct PartialSources {
     pub include_dirs: Option<Vec<String>>,
     /// The preprocessor definitions.
     pub defines: Option<IndexMap<String, Option<String>>>,
+    /// The library entries.
+    pub libraries: Option<Vec<PartialLibrary>>,
     /// The source file paths.
     pub files: Vec<PartialSourceFile>,
 }
@@ -490,6 +608,7 @@ impl From<Vec<PartialSourceFile>> for PartialSources {
             target: None,
             include_dirs: None,
             defines: None,
+            libraries: None,
             files: v,
         }
     }
@@ -524,11 +643,18 @@ impl Validate for PartialSources {
             .map(|path| env_path_from_string(path.to_string()))
             .collect();
         let defines = self.defines.unwrap_or_default();
+        let libraries: Result<Vec<_>> = self
+            .libraries
+            .unwrap_or_default()
+            .into_iter()
+            .map(|lib| lib.validate())
+            .collect();
         let files: Result<Vec<_>> = post_glob_files.into_iter().map(|f| f.validate()).collect();
         Ok(Sources {
             target: self.target.unwrap_or(TargetSpec::Wildcard),
             include_dirs: include_dirs?,
             defines,
+            libraries: libraries?,
             files: files?,
         })
     }

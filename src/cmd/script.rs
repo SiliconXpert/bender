@@ -254,6 +254,7 @@ pub fn run(sess: &Session, matches: &ArgMatches) -> Result<()> {
             include_dirs: Default::default(),
             export_incdirs: Default::default(),
             defines: Default::default(),
+            libraries: Default::default(),
             files: Default::default(),
             dependencies: Default::default(),
             version: None,
@@ -286,6 +287,7 @@ pub fn run(sess: &Session, matches: &ArgMatches) -> Result<()> {
                 include_dirs: Default::default(),
                 export_incdirs: Default::default(),
                 defines: Default::default(),
+                libraries: Default::default(),
                 files: Default::default(),
                 dependencies: Default::default(),
                 version: None,
@@ -513,6 +515,7 @@ fn emit_template(
 
     let mut all_defines = IndexMap::new();
     let mut all_incdirs = vec![];
+    let mut all_libraries = vec![];
     let mut all_files = vec![];
     let mut all_verilog = vec![];
     let mut all_vhdl = vec![];
@@ -523,6 +526,7 @@ fn emit_template(
                 .map(|(k, &v)| (k.to_string(), v.map(String::from))),
         );
         all_incdirs.append(&mut src.clone().get_incdirs());
+        all_libraries.extend(src.libraries.clone());
         all_files.append(&mut src.files.clone());
     }
     all_defines.extend(target_defines.clone());
@@ -546,6 +550,10 @@ fn emit_template(
         IndexSet::new()
     };
     tera_context.insert("all_incdirs", &all_incdirs);
+    
+    // Add libraries to the template context
+    tera_context.insert("all_libraries", &all_libraries);
+    
     let all_files: IndexSet<PathBuf> = if (!matches.get_flag("only-defines")
         && !matches.get_flag("only-includes"))
         || matches.get_flag("only-sources")
@@ -597,6 +605,7 @@ fn emit_template(
                         incdirs.sort();
                         incdirs
                     },
+                    libraries: src.libraries.clone(),
                     files: files
                         .iter()
                         .map(|f| match f {
@@ -693,6 +702,7 @@ fn emit_template(
 struct TplSrcStruct {
     defines: IndexSet<(String, Option<String>)>,
     incdirs: IndexSet<PathBuf>,
+    libraries: Vec<crate::config::Library>,
     files: IndexSet<PathBuf>,
     file_type: String,
 }
