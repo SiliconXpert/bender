@@ -10,7 +10,9 @@ ROOT="{{ root }}"
     {% for tmp_arg in vlog_args %}{{ tmp_arg }} \
     {% endfor %}{% for define in group.defines %}"+define+{{ define.0 }}{% if define.1 %}={{ define.1 }}{% endif %}" \
     {% endfor %}{% for incdir in group.incdirs %}"+incdir+{{ incdir | replace(from=root, to='$ROOT') }}" \
-    {% endfor %}{% elif group.file_type == 'vhdl' %}{{ vhdlan_bin }} \
+    {% endfor %}{% for library in group.libraries %}{% if library.Path %}"-y" "{{ library.Path | replace(from=root, to='$ROOT') }}" \
+    {% elif library.File %}"-v" "{{ library.File.path | replace(from=root, to='$ROOT') }}" \
+    {% endif %}{% endfor %}{% elif group.file_type == 'vhdl' %}{{ vhdlan_bin }} \
     {% for tmp_arg in vcom_args %}{{ tmp_arg }} \
     {% endfor %}{% endif %}{% for file in group.files %}"{{ file | replace(from=root, to='$ROOT') }}" {% if not loop.last %}\
     {% endif %}{% endfor %}
@@ -20,7 +22,9 @@ ROOT="{{ root }}"
     {% for tmp_arg in vlog_args %}{{ tmp_arg }} \
     {% endfor %}{% for define in all_defines %}"+define+{{ define.0 }}{% if define.1 %}={{ define.1 }}{% endif %}" \
     {% endfor %}{% for incdir in all_incdirs %}"+incdir+{{ incdir | replace(from=root, to='$ROOT') }}" \
-    {% endfor %}{% endif %}"{{ file | replace(from=root, to='$ROOT') }}" {% if not loop.last %}\
+    {% endfor %}{% for library in all_libraries %}{% if library.Path %}"-y" "{{ library.Path | replace(from=root, to='$ROOT') }}" \
+    {% elif library.File %}"-v" "{{ library.File.path | replace(from=root, to='$ROOT') }}" \
+    {% endif %}{% endfor %}{% endif %}"{{ file | replace(from=root, to='$ROOT') }}" {% if not loop.last %}\
     {% endif %}{% if loop.last %}
 {% endif %}{% endfor %}
 {% for file in all_vhdl %}{% if loop.first %}{{ vhdlan_bin }} \

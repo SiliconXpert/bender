@@ -33,6 +33,8 @@ pub struct SourceGroup<'ctx> {
     pub export_incdirs: IndexMap<String, IndexSet<&'ctx Path>>,
     /// The preprocessor definitions.
     pub defines: IndexMap<&'ctx str, Option<&'ctx str>>,
+    /// The library entries for this group.
+    pub libraries: Vec<crate::config::Library>,
     /// The files in this group.
     pub files: Vec<SourceFile<'ctx>>,
     /// Package dependencies of this source group
@@ -99,6 +101,7 @@ impl<'ctx> SourceGroup<'ctx> {
                 include_dirs: self.include_dirs.clone(),
                 export_incdirs: self.export_incdirs.clone(),
                 defines: self.defines.clone(),
+                libraries: self.libraries.clone(),
                 files,
                 dependencies: self.dependencies.clone(),
                 version: self.version.clone(),
@@ -186,6 +189,7 @@ impl<'ctx> SourceGroup<'ctx> {
                 include_dirs: self.include_dirs.clone(),
                 export_incdirs,
                 defines: self.defines.clone(),
+                libraries: self.libraries.clone(),
                 files,
                 dependencies: self.dependencies.clone(),
                 version: self.version.clone(),
